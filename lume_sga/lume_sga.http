@@ -1,0 +1,6 @@
+@lume_sga_HostAddress = http://localhost:5251
+
+GET {{lume_sga_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
