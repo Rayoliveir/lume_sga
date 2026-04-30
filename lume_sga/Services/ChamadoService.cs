@@ -1,7 +1,7 @@
 ﻿using lume_sga.Data;
 using lume_sga.Models;
 
-namespace lume_sga.Services; // Verifique se esta linha está IGUAL a esta
+namespace lume_sga.Services; 
 
 public class ChamadoService
 {
@@ -26,7 +26,6 @@ public class ChamadoService
     {
         var chamado = await _context.Chamados.FindAsync(chamadoId);
 
-        // Validação: Permitir apenas chamados que já foram "Iniciados"
         if (chamado == null || chamado.Status != StatusChamado.Iniciado)
             return false;
 
