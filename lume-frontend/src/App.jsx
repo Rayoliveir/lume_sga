@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
@@ -14,9 +15,9 @@ import {
 const API_URL = "http://localhost:5251/api";
 
 function App() {
-    // ESTADOS (Todos dentro da função App)
     const [chamados, setChamados] = useState([]);
-    const [setores, setSetores] = useState([]); // <-- Movido para dentro
+    const [setores, setSetores] = useState([]);
+    const [prioridades, setPrioridades] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [novoChamado, setNovoChamado] = useState({
@@ -24,7 +25,7 @@ function App() {
         descricao: 'Descrição padrão via sistema',
         setorId: '',
         status: 0,
-        prioridade: 0
+        prioridadeId:''
     });
 
     // FUNÇÕES DE BUSCA
@@ -49,11 +50,22 @@ function App() {
         }
     };
 
+    const fetchPrioridades = async () => {
+        try {
+            const response = await axios.get(`${API_URL}/Prioridades`);
+            setPrioridades(response.data);
+        } catch (error) {
+            console.error("Erro ao buscar prioridades", error);
+        }
+    };
+
     // USE EFFECT (Monitorando o carregamento inicial)
     useEffect(() => {
         fetchChamados();
         fetchSetores();
+        fetchPrioridades();
     }, []);
+
 
     // HANDLER DE ENVIO
     const handleSubmit = async (e) => {
@@ -62,19 +74,22 @@ function App() {
         const payload = {
             Titulo: novoChamado.titulo,
             Descricao: novoChamado.descricao || "Sem descrição",
-            SetorId: parseInt(novoChamado.setorId),
+            SetorId: Number(novoChamado.setorId),
+            PrioridadeId: Number(novoChamado.prioridadeId),
             Status: 0
         };
 
         try {
-            await axios.post(`${API_URL}/Chamados`, payload);
+            const response = await axios.post(`${API_URL}/Chamados`, payload);
+            console.log("Sucesso!", response.data);
             setIsModalOpen(false);
             fetchChamados();
-            setNovoChamado({ titulo: '', setorId: '', descricao: 'Descrição padrão via sistema', status: 0, prioridade: 0 });
-            alert("Chamado criado com sucesso!");
+            setNovoChamado({ titulo: '', descricao: '', setorId: '', prioridadeId: '', status: 0 });
+            //alert("Chamado criado com sucesso!");
         } catch (error) {
-            console.error("Erro ao criar chamado:", error.response?.data);
-            alert("Erro: Verifique se selecionou um setor válido.");
+            console.error("Erro detalhado:", error.response?.data || error.message);
+            alert("Erro: Certifique-se de selecionar Setor e Prioridade.");
+            //alert("Erro ao criar chamado. Verifique o console.");
         }
     };
 
@@ -212,15 +227,27 @@ function App() {
                               <label className="block text-sm font-bold text-navy-dark mb-1">Setor</label>
                               <select
                                   className="w-full border border-gray-200 rounded-lg p-2 outline-none"
-                                  value={novoChamado.setorId} // Adicione isso para controlar o componente
+                                  value={novoChamado.setorId}
                                   onChange={(e) => setNovoChamado({ ...novoChamado, setorId: e.target.value })}
                               >
                                   <option value="">Selecione um setor...</option>
                                   {setores.map(s => (
-                                      /* Testamos os dois casos: s.id ou s.ID */
                                       <option key={s.id || s.ID} value={s.id || s.ID}>
                                           {s.nome || s.Nome}
                                       </option>
+                                  ))}
+                              </select>
+                          </div>
+                          <div>
+                              <label className="block text-sm font-bold text-navy-dark mb-1">Prioridade</label>
+                              <select
+                                  className="w-full border border-gray-200 rounded-lg p-2 outline-none"
+                                  value={novoChamado.prioridadeId}
+                                  onChange={(e) => setNovoChamado({ ...novoChamado, prioridadeId: e.target.value })}
+                              >
+                                  <option value="">Selecione a urgência...</option>
+                                  {prioridades.map(p => (
+                                      <option key={p.id} value={p.id}>{p.nome}</option>
                                   ))}
                               </select>
                           </div>
