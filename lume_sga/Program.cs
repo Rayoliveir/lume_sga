@@ -17,6 +17,14 @@ builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReact",
+        builder => builder.WithOrigins("http://localhost:5173") // Porta padrão do Vite
+                          .AllowAnyMethod()
+                          .AllowAnyHeader());
+});
+
 var app = builder.Build();
 
 //if (app.Environment.IsDevelopment())
@@ -31,6 +39,7 @@ var app = builder.Build();
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
+app.UseCors("AllowReact");
 app.MapControllers();
 
 app.Run();
