@@ -7,8 +7,8 @@ using lume_sga.Services;
 
 namespace lume_sga.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
+[ApiController]
 public class ChamadosController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -47,6 +47,13 @@ public class ChamadosController : ControllerBase
         return Ok(retorno);
     }
 
+    // 1. Crie este DTO simples se não tiver
+    public class FinalizarChamadoDto
+    {
+        public string Solucao { get; set; } = string.Empty;
+    }
+
+
     [HttpPost]
     public async Task<ActionResult> AbrirChamado(ChamadoCreateDto dto)
     {
@@ -70,5 +77,17 @@ public class ChamadosController : ControllerBase
         var sucesso = await _service.RealizarCheckIn(id);
         if (!sucesso) return BadRequest("Não foi possível iniciar o chamado. Verifique o ID ou Status.");
         return Ok("Atendimento iniciado com sucesso!");
+    }
+
+    [HttpPost("{id}/check-out")]
+    public async Task<IActionResult> CheckOut(int id, [FromBody] FinalizarChamadoDto dto)
+    {
+        // Usamos o 'dto.Solucao' que o DTO carrega do Front-end
+        var sucesso = await _service.RealizarCheckOut(id, dto.Solucao);
+
+        if (!sucesso)
+            return BadRequest("Erro ao finalizar. O chamado deve estar 'Iniciado'.");
+
+        return Ok("Chamado finalizado com sucesso!");
     }
 }

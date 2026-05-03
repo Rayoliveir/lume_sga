@@ -28,6 +28,48 @@ function App() {
         prioridadeId:''
     });
 
+    // Funçaõ de açoa
+    const formatarTempo = (horas) => {
+        if (horas === 0) return "Aguardando início";
+
+        const totalMinutos = Math.floor(horas * 60);
+        const h = Math.floor(totalMinutos / 60);
+        const m = totalMinutos % 60;
+
+        return h > 0 ? `${h}h ${m}min` : `${m}min`;
+    };
+
+    const realizarCheckIn = async (id) => {
+        try {
+            await axios.post(`${API_URL}/Chamados/${id}/check-in`);
+
+            await fetchChamados();
+
+            //alert("Atendimento iniciado! O cronômetro do SLA está rodando.");
+        } catch (error) {
+            console.error("Erro ao realizar check-in:", error);
+            alert(error.response?.data || "Erro ao iniciar atendimento.");
+        }
+    };
+
+    const realizarCheckOut = async (id) => {
+        const solucao = prompt("Descreva a solução aplicada:");
+        if (!solucao) return;
+
+        try {
+            // MUITA ATENÇÃO NESSA LINHA ABAIXO:
+            const url = `${API_URL}/Chamados/${id}/check-out`;
+            console.log("Chamando URL:", url); // Veja no console se a URL está certa
+
+            await axios.post(url, { solucao: solucao }); // O objeto deve bater com o DTO
+
+            fetchChamados();
+            alert("Finalizado!");
+        } catch (error) {
+            console.error("Erro 404 - Verifique a URL no console:", error.response);
+        }
+    };
+
     // FUNÇÕES DE BUSCA
     const fetchSetores = async () => {
         try {
@@ -161,6 +203,7 @@ function App() {
                 <th className="p-5 font-semibold">CÓD</th>
                 <th className="p-5 font-semibold">TÍTULO</th>
                 <th className="p-5 font-semibold">SETOR</th>
+                <th className="p-5 font-semibold">HORAS</th>
                 <th className="p-5 font-semibold">STATUS</th>
                 <th className="p-5 font-semibold">SLA</th>
                 <th className="p-5 font-semibold text-center">AÇÕES</th>
@@ -175,6 +218,15 @@ function App() {
                     <p className="text-xs text-gray-400">{new Date(c.dataAbertura).toLocaleString()}</p>
                   </td>
                   <td className="p-5 text-gray-600 font-medium">{c.setorNome}</td>
+                      <td className="p-5">
+                          <div className="flex flex-col">
+                              <span className="text-xs text-gray-400 uppercase font-bold">Consumido</span>
+                              <span className={`text-sm ${c.estaAtrasado ? 'text-red-600 font-bold' : 'text-gray-700'}`}>
+                                  {formatarTempo(c.horasDecorridas)}
+                              </span>
+                          </div>
+                      </td>
+
                   <td className="p-5">
                     <StatusBadge status={c.status} />
                   </td>
@@ -189,11 +241,33 @@ function App() {
                       </div>
                     )}
                   </td>
-                  <td className="p-5">
-                    <div className="flex justify-center gap-2">
-                      <button className="bg-navy-dark text-white text-xs px-4 py-2 rounded hover:bg-navy-light transition">CHECK-IN</button>
-                    </div>
-                  </td>
+                      <td className="p-5">
+                          <div className="flex justify-center gap-2">
+                              {c.status === 0 && (
+                                  <button
+                                      onClick={() => realizarCheckIn(c.id)}
+                                      className="bg-navy-dark text-white text-xs px-4 py-2 rounded hover:bg-navy-light transition font-bold"
+                                  >
+                                      CHECK-IN
+                                  </button>
+                              )}
+
+                              {c.status === 1 && (
+                                  <button
+                                      onClick={() => realizarCheckOut(c.id)}
+                                      className="bg-green-600 text-white text-xs px-4 py-2 rounded hover:bg-green-700 transition font-bold"
+                                  >
+                                      FINALIZAR
+                                  </button>
+                              )}
+
+                              {c.status === 2 && (
+                                  <span className="text-gray-400 text-xs font-bold italic">
+                                      CONCLUÍDO
+                                  </span>
+                              )}
+                          </div>
+                      </td>
                 </tr>
               ))}
             </tbody>

@@ -5,6 +5,4 @@
         public string Nome { get; set; } = string.Empty;
         public int TempoEstimadoHoras { get; set; }
     }
-
- 
 }
