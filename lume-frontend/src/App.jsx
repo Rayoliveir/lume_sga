@@ -16,22 +16,30 @@ const API_URL = "http://localhost:5251/api";
 function App() {
   const [chamados, setChamados] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [novoChamado, setNovoChamado] = useState({
+    titulo: '',
+    setorId: '',
+    descricao: '',
+    prioridade: 0
+});
 
   useEffect(() => {
     fetchChamados();
   }, []);
 
-  const fetchChamados = async () => {
+const fetchChamados = async () => {
     try {
-      const response = await axios.get(`${API_URL}/Chamados`);
-      setChamados(response.data);
-      setLoading(false);
+        setLoading(true);
+        const response = await axios.get(`${API_URL}/Chamados`);
+        console.log("Dados recebidos da API:", response.data); 
+        setChamados(response.data);
+        setLoading(false);
     } catch (error) {
-      console.error("Erro ao buscar chamados:", error);
-      setLoading(false);
+        console.error("Erro ao conectar com a API. Verifique se o Backend está ligado!", error);
+        setLoading(false);
     }
-  };
-
+};
 
   const abertos = chamados.filter(c => c.status === 0).length;
   const atrasados = chamados.filter(c => c.estaAtrasado).length;
@@ -66,7 +74,7 @@ function App() {
                 className="pl-10 pr-4 py-2 rounded-lg border-none bg-white shadow-sm focus:ring-2 focus:ring-lemon outline-none transition w-64"
               />
             </div>
-            <button className="bg-lemon text-navy-dark px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:shadow-lg hover:scale-105 transition-all">
+            <button onClick={() => setIsModalOpen(true)} className="bg-lemon text-navy-dark px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:shadow-lg hover:scale-105 transition-all">
               <Plus size={20} /> NOVO CHAMADO
             </button>
           </div>
@@ -141,7 +149,47 @@ function App() {
             <div className="p-10 text-center text-gray-400 italic">Nenhum chamado encontrado no banco de dados.</div>
           )}
         </div>
-      </main>
+          </main>
+
+          {/*Modal de Novo chamado*/}
+          {isModalOpen && (
+              <div className="fixed inset-0 bg-navy-dark/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+                      <div className="bg-navy-dark p-6 text-white flex justify-between items-center">
+                          <h2 className="text-xl font-bold">Novo Chamado</h2>
+                          <button onClick={() => setIsModalOpen(false)} className="hover:text-lemon text-gray-400">✕</button>
+                      </div>
+
+                      <form className="p-6 space-y-4">
+                          <div>
+                              <label className="block text-sm font-bold text-navy-dark mb-1">Título</label>
+                              <input
+                                  type="text"
+                                  className="w-full border border-gray-200 rounded-lg p-2 focus:ring-2 focus:ring-lemon outline-none"
+                                  placeholder="Ex: Teclado não funciona"
+                                  onChange={(e) => setNovoChamado({ ...novoChamado, titulo: e.target.value })}
+                              />
+                          </div>
+
+                          <div className="flex gap-4">
+                              <button
+                                  type="button"
+                                  onClick={() => setIsModalOpen(false)}
+                                  className="flex-1 px-4 py-2 border border-gray-200 rounded-lg font-bold text-gray-500 hover:bg-gray-50"
+                              >
+                                  CANCELAR
+                              </button>
+                              <button
+                                  type="submit"
+                                  className="flex-1 px-4 py-2 bg-lemon text-navy-dark rounded-lg font-bold hover:brightness-90 transition"
+                              >
+                                  CRIAR CHAMADO
+                              </button>
+                          </div>
+                      </form>
+                  </div>
+              </div>
+          )}
     </div>
   );
 }
