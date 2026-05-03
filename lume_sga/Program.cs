@@ -5,11 +5,9 @@ using lume_sga.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Banco de Dados
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Services
 builder.Services.AddScoped<ChamadoService>();
 
 builder.Services.AddControllers();
@@ -20,7 +18,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact",
-        builder => builder.WithOrigins("http://localhost:5173") // Porta padrão do Vite
+        builder => builder.WithOrigins("http://localhost:5173") 
                           .AllowAnyMethod()
                           .AllowAnyHeader());
 });
@@ -48,7 +46,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<lume_sga.Data.AppDbContext>();
-        // Cria o banco e aplica as sementes (HasData) automaticamente
+
         context.Database.EnsureCreated();
         Console.WriteLine("Banco de dados verificado/criado com sucesso!");
     }

@@ -13,7 +13,6 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Seed: Popula o banco com as prioridades padrão conforme seu requisito
         modelBuilder.Entity<Prioridade>().HasData(
             new Prioridade { Id = 1, Nome = "Baixa", TempoEstimadoHoras = 48 },
             new Prioridade { Id = 2, Nome = "Média", TempoEstimadoHoras = 24 },

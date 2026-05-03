@@ -36,7 +36,6 @@ public class ChamadosController : ControllerBase
             PrioridadeNome = c.Prioridade?.Nome ?? "N/A",
             Status = c.Status,
             DataAbertura = c.DataAbertura,
-            // Lógica de SLA: Se iniciado, calcula horas desde o início. Se finalizado, usa o tempo total.
             HorasDecorridas = c.DataHoraInicio.HasValue
                 ? (c.DataHoraTermino ?? DateTime.Now).Subtract(c.DataHoraInicio.Value).TotalHours
                 : 0,

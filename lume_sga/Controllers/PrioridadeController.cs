@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using lume_sga.Data; // Importante para achar o AppDbContext
+using lume_sga.Data;
 
 namespace lume_sga.Controllers;
 
