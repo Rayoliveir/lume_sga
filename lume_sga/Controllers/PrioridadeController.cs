@@ -30,4 +30,15 @@ public class PrioridadesController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok(prioridade);
     }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeletePrioridade(int id)
+    {
+        var prioridade = await _context.Prioridades.FindAsync(id);
+        if (prioridade == null) return NotFound();
+
+        _context.Prioridades.Remove(prioridade);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
 }

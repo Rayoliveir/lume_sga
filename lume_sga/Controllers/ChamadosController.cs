@@ -46,7 +46,6 @@ public class ChamadosController : ControllerBase
         return Ok(retorno);
     }
 
-    // 1. Crie este DTO simples se não tiver
     public class FinalizarChamadoDto
     {
         public string Solucao { get; set; } = string.Empty;
@@ -81,7 +80,6 @@ public class ChamadosController : ControllerBase
     [HttpPost("{id}/check-out")]
     public async Task<IActionResult> CheckOut(int id, [FromBody] FinalizarChamadoDto dto)
     {
-        // Usamos o 'dto.Solucao' que o DTO carrega do Front-end
         var sucesso = await _service.RealizarCheckOut(id, dto.Solucao);
 
         if (!sucesso)
@@ -89,4 +87,47 @@ public class ChamadosController : ControllerBase
 
         return Ok("Chamado finalizado com sucesso!");
     }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateChamado(int id, [FromBody] Chamado chamadoAtualizado)
+    {
+        if (id != chamadoAtualizado.Id) return BadRequest("ID divergente.");
+
+        var chamadoNoBanco = await _context.Chamados.FindAsync(id);
+        if (chamadoNoBanco == null) return NotFound();
+
+        chamadoNoBanco.Titulo = chamadoAtualizado.Titulo;
+        chamadoNoBanco.SetorId = chamadoAtualizado.SetorId;
+        chamadoNoBanco.PrioridadeId = chamadoAtualizado.PrioridadeId;
+        chamadoNoBanco.Descricao = chamadoAtualizado.Descricao;
+        chamadoNoBanco.Status = chamadoAtualizado.Status; 
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!ChamadoExists(id)) return NotFound();
+            else throw;
+        }
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteChamado(int id)
+    {
+        var chamado = await _context.Chamados.FindAsync(id);
+        if (chamado == null) return NotFound();
+
+        chamado.Status = StatusChamado.Cancelado;
+
+        _context.Entry(chamado).State = EntityState.Modified;
+
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    private bool ChamadoExists(int id) => _context.Chamados.Any(e => e.Id == id);
 }

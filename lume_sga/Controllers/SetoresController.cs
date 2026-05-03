@@ -23,4 +23,17 @@ public class SetoresController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok(setor);
     }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteSetor(int id)
+    {
+        var setor = await _context.Setores.FindAsync(id);
+        if (setor == null) return NotFound();
+
+        _context.Setores.Remove(setor);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+
 }

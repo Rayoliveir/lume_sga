@@ -1,5 +1,10 @@
 ﻿namespace lume_sga.Models {
-    public enum StatusChamado { Aberto, Iniciado, Finalizado, Cancelado }
+    public enum StatusChamado { 
+        Aberto, 
+        Iniciado, 
+        Finalizado, 
+        Cancelado
+    }
     public class Chamado {
         public int Id { get; set; }
         public string Titulo { get; set; } = string.Empty;
