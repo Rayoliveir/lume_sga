@@ -19,5 +19,12 @@ public class AppDbContext : DbContext
             new Prioridade { Id = 2, Nome = "Média", TempoEstimadoHoras = 24 },
             new Prioridade { Id = 3, Nome = "Alta", TempoEstimadoHoras = 4 }
         );
+   
+        modelBuilder.Entity<Setor>().HasData(
+            new Setor { ID = 1, Nome = "Tecnologia da Informação" },
+            new Setor { ID = 2, Nome = "Recursos Humanos" },
+            new Setor { ID = 3, Nome = "Financeiro" }
+        );
+    
     }
 }

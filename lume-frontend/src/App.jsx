@@ -1,48 +1,86 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-  LayoutDashboard, 
-  Clock, 
-  AlertTriangle, 
-  CheckCircle, 
-  Plus, 
-  Search,
-  User,
-  LogOut
+import {
+    LayoutDashboard,
+    Clock,
+    AlertTriangle,
+    CheckCircle,
+    Plus,
+    Search,
+    User,
+    LogOut
 } from 'lucide-react';
 
 const API_URL = "http://localhost:5251/api";
 
 function App() {
-  const [chamados, setChamados] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [novoChamado, setNovoChamado] = useState({
-    titulo: '',
-    setorId: '',
-    descricao: '',
-    prioridade: 0
-});
+    // ESTADOS (Todos dentro da função App)
+    const [chamados, setChamados] = useState([]);
+    const [setores, setSetores] = useState([]); // <-- Movido para dentro
+    const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [novoChamado, setNovoChamado] = useState({
+        titulo: '',
+        descricao: 'Descrição padrão via sistema',
+        setorId: '',
+        status: 0,
+        prioridade: 0
+    });
 
-  useEffect(() => {
-    fetchChamados();
-  }, []);
+    // FUNÇÕES DE BUSCA
+    const fetchSetores = async () => {
+        try {
+            const response = await axios.get(`${API_URL}/Setores`);
+            setSetores(response.data);
+        } catch (error) {
+            console.error("Erro ao buscar setores", error);
+        }
+    };
 
-const fetchChamados = async () => {
-    try {
-        setLoading(true);
-        const response = await axios.get(`${API_URL}/Chamados`);
-        console.log("Dados recebidos da API:", response.data); 
-        setChamados(response.data);
-        setLoading(false);
-    } catch (error) {
-        console.error("Erro ao conectar com a API. Verifique se o Backend está ligado!", error);
-        setLoading(false);
-    }
-};
+    const fetchChamados = async () => {
+        try {
+            setLoading(true);
+            const response = await axios.get(`${API_URL}/Chamados`);
+            setChamados(response.data);
+            setLoading(false);
+        } catch (error) {
+            console.error("Erro ao conectar com a API", error);
+            setLoading(false);
+        }
+    };
 
-  const abertos = chamados.filter(c => c.status === 0).length;
-  const atrasados = chamados.filter(c => c.estaAtrasado).length;
+    // USE EFFECT (Monitorando o carregamento inicial)
+    useEffect(() => {
+        fetchChamados();
+        fetchSetores();
+    }, []);
+
+    // HANDLER DE ENVIO
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        const payload = {
+            Titulo: novoChamado.titulo,
+            Descricao: novoChamado.descricao || "Sem descrição",
+            SetorId: parseInt(novoChamado.setorId),
+            Status: 0
+        };
+
+        try {
+            await axios.post(`${API_URL}/Chamados`, payload);
+            setIsModalOpen(false);
+            fetchChamados();
+            setNovoChamado({ titulo: '', setorId: '', descricao: 'Descrição padrão via sistema', status: 0, prioridade: 0 });
+            alert("Chamado criado com sucesso!");
+        } catch (error) {
+            console.error("Erro ao criar chamado:", error.response?.data);
+            alert("Erro: Verifique se selecionou um setor válido.");
+        }
+    };
+
+    // CÁLCULOS DE INTERFACE
+    const abertos = chamados.filter(c => c.status === 0).length;
+    const atrasados = chamados.filter(c => c.estaAtrasado).length;
 
   return (
     <div className="min-h-screen bg-alice">
@@ -160,7 +198,7 @@ const fetchChamados = async () => {
                           <button onClick={() => setIsModalOpen(false)} className="hover:text-lemon text-gray-400">✕</button>
                       </div>
 
-                      <form className="p-6 space-y-4">
+                      <form onSubmit={handleSubmit} className="p-6 space-y-4">
                           <div>
                               <label className="block text-sm font-bold text-navy-dark mb-1">Título</label>
                               <input
@@ -170,7 +208,22 @@ const fetchChamados = async () => {
                                   onChange={(e) => setNovoChamado({ ...novoChamado, titulo: e.target.value })}
                               />
                           </div>
-
+                          <div>
+                              <label className="block text-sm font-bold text-navy-dark mb-1">Setor</label>
+                              <select
+                                  className="w-full border border-gray-200 rounded-lg p-2 outline-none"
+                                  value={novoChamado.setorId} // Adicione isso para controlar o componente
+                                  onChange={(e) => setNovoChamado({ ...novoChamado, setorId: e.target.value })}
+                              >
+                                  <option value="">Selecione um setor...</option>
+                                  {setores.map(s => (
+                                      /* Testamos os dois casos: s.id ou s.ID */
+                                      <option key={s.id || s.ID} value={s.id || s.ID}>
+                                          {s.nome || s.Nome}
+                                      </option>
+                                  ))}
+                              </select>
+                          </div>
                           <div className="flex gap-4">
                               <button
                                   type="button"

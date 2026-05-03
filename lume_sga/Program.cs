@@ -42,4 +42,20 @@ app.UseAuthorization();
 app.UseCors("AllowReact");
 app.MapControllers();
 
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<lume_sga.Data.AppDbContext>();
+        // Cria o banco e aplica as sementes (HasData) automaticamente
+        context.Database.EnsureCreated();
+        Console.WriteLine("Banco de dados verificado/criado com sucesso!");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Erro ao criar o banco: {ex.Message}");
+    }
+}
+
 app.Run();
