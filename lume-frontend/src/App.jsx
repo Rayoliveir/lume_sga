@@ -5,7 +5,6 @@ import {
     LayoutDashboard,
     Clock,
     AlertTriangle,
-    //CheckCircle,
     Plus,
     Search,
     LogOut,
@@ -13,8 +12,24 @@ import {
     Building2,
     ShieldAlert,
     Trash2,
-    Edit
+    Edit,
+    BarChart3,
+    PieChart as PieIcon
 } from 'lucide-react';
+import {
+    PieChart,
+    Pie,
+    Cell,
+    Tooltip as RechartsTooltip,
+    ResponsiveContainer,
+    Legend,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip
+} from 'recharts';
 
 const API_URL = "http://localhost:5251/api";
 
@@ -68,7 +83,7 @@ function App() {
         fetchPrioridades();
     }, []);
 
-    // --- FUNÇÕES DE CHAMADOS ---
+    // --- FUNÇÕES DE LÓGICA ---
     const fecharModal = () => {
         setIsModalOpen(false);
         setEditandoId(null);
@@ -89,13 +104,10 @@ function App() {
 
     const deletarChamado = async (id) => {
         if (!window.confirm(`Tem certeza que deseja mover o chamado #${id} para a lixeira?`)) return;
-
         try {
-            // Chamada limpa: apenas o ID na URL, sem corpo (body) com campos obrigatórios
             await axios.delete(`${API_URL}/Chamados/${id}`);
-
             fecharModal();
-            fetchChamados(); // Recarrega a lista
+            fetchChamados();
         } catch (error) {
             console.error("Erro ao deletar:", error);
             alert("Não foi possível excluir o chamado.");
@@ -120,7 +132,7 @@ function App() {
             fecharModal();
             fetchChamados();
         } catch (error) {
-            alert("Erro ao salvar chamado.", error);
+            alert("Erro ao salvar chamado.");
         }
     };
 
@@ -128,7 +140,7 @@ function App() {
         try {
             await axios.post(`${API_URL}/Chamados/${id}/check-in`);
             fetchChamados();
-        } catch (error) { alert("Erro no Check-in.", error); }
+        } catch (error) { alert("Erro no Check-in."); }
     };
 
     const realizarCheckOut = async (id) => {
@@ -137,12 +149,39 @@ function App() {
         try {
             await axios.post(`${API_URL}/Chamados/${id}/check-out`, { solucao });
             fetchChamados();
-        } catch (error) { alert("Erro no Check-out.", error); }
+        } catch (error) { alert("Erro no Check-out."); }
     };
 
-    
+    const prepararDadosRelatorio = () => {
+        const statusData = [
+            { name: 'Abertos', value: chamados.filter(c => c.status === 0).length, color: '#3b82f6' },
+            { name: 'Em Processo', value: chamados.filter(c => c.status === 1).length, color: '#f59e0b' },
+            { name: 'Concluídos', value: chamados.filter(c => c.status === 2).length, color: '#10b981' },
+            { name: 'Cancelados', value: chamados.filter(c => c.status === 3).length, color: '#ef4444' },
+        ];
+
+        const setorMap = {};
+        setores.forEach(s => {
+            setorMap[s.nome] = { nome: s.nome, total: 0, Alta: 0, Media: 0, Baixa: 0 };
+        });
+
+        chamados.forEach(c => {
+            const nomeSetor = c.setorNome || "N/A";
+            if (setorMap[nomeSetor]) {
+                setorMap[nomeSetor].total += 1;
+                const pNome = c.prioridadeNome;
+                if (setorMap[nomeSetor][pNome] !== undefined) {
+                    setorMap[nomeSetor][pNome] += 1;
+                }
+            }
+        });
+
+        const barData = Object.values(setorMap).sort((a, b) => b.total - a.total);
+        return { statusData, barData };
+    };
+
     const chamadosFiltrados = chamados.filter(c => {
-        const statusMatch = filtroStatus === 'TODOS' || 
+        const statusMatch = filtroStatus === 'TODOS' ||
             (filtroStatus === 'ABERTO' && c.status === 0) ||
             (filtroStatus === 'INICIADO' && c.status === 1) ||
             (filtroStatus === 'FINALIZADO' && c.status === 2) ||
@@ -166,6 +205,9 @@ function App() {
                     <button onClick={() => setAbaAtiva('DASHBOARD')} className={`p-3 rounded-xl transition ${abaAtiva === 'DASHBOARD' ? 'bg-navy-light text-lemon shadow-lg' : 'hover:text-lemon'}`}>
                         <LayoutDashboard size={24} />
                     </button>
+                    <button onClick={() => setAbaAtiva('RELATORIOS')} className={`p-3 rounded-xl transition ${abaAtiva === 'RELATORIOS' ? 'bg-navy-light text-lemon shadow-lg' : 'hover:text-lemon'}`}>
+                        <BarChart3 size={24} />
+                    </button>
                     <button onClick={() => setAbaAtiva('CADASTROS')} className={`p-3 rounded-xl transition ${abaAtiva === 'CADASTROS' ? 'bg-navy-light text-lemon shadow-lg' : 'hover:text-lemon'}`}>
                         <Settings size={24} />
                     </button>
@@ -175,21 +217,19 @@ function App() {
 
             {/* CONTEÚDO PRINCIPAL */}
             <main className="ml-20 p-8 w-full">
-                {abaAtiva === 'DASHBOARD' ? (
+                {abaAtiva === 'DASHBOARD' && (
                     <div className="animate-in fade-in duration-500">
                         <header className="mb-10">
                             <h1 className="text-3xl font-bold text-navy-dark italic">LUME <span className="text-navy-light font-light">SGA</span></h1>
                             <p className="text-gray-500">Gestão de Atendimentos</p>
                         </header>
 
-                        {/* CARDS */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
                             <Card title="Total" value={chamados.length} icon={<LayoutDashboard />} />
                             <Card title="Em Aberto" value={chamados.filter(c => c.status === 0).length} icon={<Clock className="text-blue-500" />} />
                             <Card title="Atrasados" value={chamados.filter(c => c.estaAtrasado).length} icon={<AlertTriangle className="text-red-500" />} isCritical={chamados.filter(c => c.estaAtrasado).length > 0} />
                         </div>
 
-                        {/* AÇÕES E BUSCA */}
                         <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
                             <div className="flex gap-2 bg-white p-2 rounded-lg shadow-sm border border-gray-100">
                                 {['TODOS', 'ABERTO', 'INICIADO', 'FINALIZADO', 'DELETADO'].map(s => (
@@ -209,7 +249,6 @@ function App() {
                             </div>
                         </div>
 
-                        {/* TABELA */}
                         <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
                             <table className="w-full text-left">
                                 <thead className="bg-navy-light text-white font-semibold">
@@ -230,21 +269,15 @@ function App() {
                                             <td className="p-5"><StatusBadge status={c.status} /></td>
                                             <td className="p-5">
                                                 <div className="flex justify-center gap-2">
-                                                    
                                                     <button
                                                         onClick={() => abrirEdicao(c)}
                                                         disabled={c.status >= 2}
                                                         className={`p-2 rounded-lg transition ${c.status >= 2 ? 'text-gray-300 cursor-not-allowed' : 'text-blue-500 hover:bg-blue-50'}`}
-                                                        title={c.status >= 2 ? "Chamados encerrados não podem ser editados" : "Editar"}
                                                     >
                                                         <Edit size={18} />
                                                     </button>
-
-                                                    
-                                                    {c.status === 0 && <button onClick={() => realizarCheckIn(c.id)} className="...">CHECK-IN</button>}
-                                                    {c.status === 1 && <button onClick={() => realizarCheckOut(c.id)} className="...">FINALIZAR</button>}
-
-                                                    
+                                                    {c.status === 0 && <button onClick={() => realizarCheckIn(c.id)} className="text-xs font-bold text-blue-600 hover:underline">CHECK-IN</button>}
+                                                    {c.status === 1 && <button onClick={() => realizarCheckOut(c.id)} className="text-xs font-bold text-green-600 hover:underline">FINALIZAR</button>}
                                                     {c.status >= 2 && <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest self-center">Arquivado</span>}
                                                 </div>
                                             </td>
@@ -254,12 +287,18 @@ function App() {
                             </table>
                         </div>
                     </div>
-                ) : (
+                )}
+
+                {abaAtiva === 'RELATORIOS' && (
+                    <TelaRelatorios chamados={chamados} prepararDados={prepararDadosRelatorio} />
+                )}
+
+                {abaAtiva === 'CADASTROS' && (
                     <TelaCadastros setores={setores} prioridades={prioridades} onUpdate={() => { fetchSetores(); fetchPrioridades(); }} />
                 )}
             </main>
 
-            {/* MODAL (CRIAR / EDITAR) */}
+            {/* MODAL */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-navy-dark/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in duration-300">
@@ -270,23 +309,22 @@ function App() {
                         <form onSubmit={handleSubmitChamado} className="p-6 space-y-4">
                             <div>
                                 <label className="block text-sm font-bold text-navy-dark mb-1">Título</label>
-                                <input type="text" required value={novoChamado.titulo} onChange={e => setNovoChamado({...novoChamado, titulo: e.target.value})} className="w-full border rounded-lg p-2 outline-none focus:ring-2 focus:ring-lemon" />
+                                <input type="text" required value={novoChamado.titulo} onChange={e => setNovoChamado({ ...novoChamado, titulo: e.target.value })} className="w-full border rounded-lg p-2 outline-none focus:ring-2 focus:ring-lemon" />
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-navy-dark mb-1">Setor</label>
-                                <select required value={novoChamado.setorId} onChange={e => setNovoChamado({...novoChamado, setorId: e.target.value})} className="w-full border rounded-lg p-2 outline-none">
+                                <select required value={novoChamado.setorId} onChange={e => setNovoChamado({ ...novoChamado, setorId: e.target.value })} className="w-full border rounded-lg p-2 outline-none">
                                     <option value="">Selecione...</option>
                                     {setores.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
                                 </select>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-navy-dark mb-1">Prioridade</label>
-                                <select required value={novoChamado.prioridadeId} onChange={e => setNovoChamado({...novoChamado, prioridadeId: e.target.value})} className="w-full border rounded-lg p-2 outline-none">
+                                <select required value={novoChamado.prioridadeId} onChange={e => setNovoChamado({ ...novoChamado, prioridadeId: e.target.value })} className="w-full border rounded-lg p-2 outline-none">
                                     <option value="">Selecione...</option>
                                     {prioridades.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                                 </select>
                             </div>
-
                             <div className="flex flex-col gap-2 pt-4">
                                 <div className="flex gap-2">
                                     <button type="button" onClick={fecharModal} className="flex-1 px-4 py-2 border rounded-lg font-bold text-gray-500 hover:bg-gray-50 transition">CANCELAR</button>
@@ -294,14 +332,9 @@ function App() {
                                         {editandoId ? 'SALVAR' : 'CRIAR'}
                                     </button>
                                 </div>
-                                
                                 {editandoId && (
-                                    <button
-                                        type="button"
-                                        onClick={() => deletarChamado(editandoId)}
-                                        className="w-full mt-2 py-2 text-red-500 text-xs font-bold flex items-center justify-center gap-2 hover:bg-red-50 rounded-lg transition"
-                                    >
-                                        <Trash2 size={14} /> EXCLUIR CHAMADO (MOVER PARA LIXEIRA)
+                                    <button type="button" onClick={() => deletarChamado(editandoId)} className="w-full mt-2 py-2 text-red-500 text-xs font-bold flex items-center justify-center gap-2 hover:bg-red-50 rounded-lg transition">
+                                        <Trash2 size={14} /> EXCLUIR CHAMADO
                                     </button>
                                 )}
                             </div>
@@ -313,7 +346,117 @@ function App() {
     );
 }
 
-// --- TELA DE CADASTROS ---
+
+function TelaRelatorios({ chamados, prepararDados }) {
+    const { statusData, barData } = prepararDados();
+
+    
+    const contagemSetores = chamados.reduce((acc, c) => {
+        const nome = c.setorNome || "N/A";
+        acc[nome] = (acc[nome] || 0) + 1;
+        return acc;
+    }, {});
+    const topSetor = Object.entries(contagemSetores).sort((a, b) => b[1] - a[1])[0]?.[0] || "---";
+
+    const contagemPrioridades = chamados.reduce((acc, c) => {
+        const nome = c.prioridadeNome || "N/A";
+        acc[nome] = (acc[nome] || 0) + 1;
+        return acc;
+    }, {});
+    const topPrioridade = Object.entries(contagemPrioridades).sort((a, b) => b[1] - a[1])[0]?.[0] || "---";
+
+    return (
+        <div className="flex flex-col gap-8 animate-in fade-in duration-500 pb-10">
+            <header>
+                <h1 className="text-3xl font-bold text-navy-dark">Relatórios do <span className="text-navy-light font-light">Sistema</span></h1>
+                <p className="text-gray-500">Análise de desempenho e demanda por setor</p>
+            </header>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 flex flex-col min-h-[450px]">
+                    <h2 className="text-lg font-bold text-navy-dark mb-4 flex items-center gap-2">
+                        <PieIcon size={20} className="text-blue-500" /> Distribuição por Status
+                    </h2>
+                    <div className="flex-1 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={statusData}
+                                    innerRadius={70}
+                                    outerRadius={110}
+                                    paddingAngle={8}
+                                    dataKey="value"
+                                >
+                                    {statusData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />)}
+                                </Pie>
+                                <RechartsTooltip
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                />
+                                <Legend verticalAlign="bottom" height={36} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 flex flex-col min-h-[450px]">
+                    <h2 className="text-lg font-bold text-navy-dark mb-4 flex items-center gap-2">
+                        <BarChart3 size={20} className="text-blue-500" /> Setores vs Prioridade
+                    </h2>
+                    <div className="flex-1 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis dataKey="nome" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                                <Tooltip
+                                    cursor={{ fill: '#f8fafc' }}
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                />
+                                <Legend />
+                                <Bar dataKey="Alta" stackId="a" fill="#ef4444" radius={[0, 0, 0, 0]} />
+                                <Bar dataKey="Media" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} />
+                                <Bar dataKey="Baixa" stackId="a" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-navy-dark text-white p-6 rounded-2xl shadow-lg border-l-8 border-lemon flex flex-col justify-between">
+                    <div>
+                        <p className="text-xs opacity-70 uppercase font-bold mb-1 tracking-widest">Taxa de Eficiência</p>
+                        <p className="text-4xl font-black text-lemon">
+                            {chamados.length > 0 ? ((chamados.filter(c => c.status === 2).length / chamados.length) * 100).toFixed(1) : 0}%
+                        </p>
+                    </div>
+                    <p className="text-[10px] mt-4 opacity-50 italic">Cálculo baseado em conclusões reais</p>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 border-l-8 border-blue-500 flex flex-col justify-between">
+                    <div>
+                        <p className="text-xs text-gray-400 uppercase font-bold mb-1 tracking-widest">Setor em Destaque</p>
+                        <p className="text-2xl font-black text-navy-dark truncate leading-tight">
+                            {topSetor}
+                        </p>
+                    </div>
+                    <p className="text-[10px] mt-4 text-gray-400 italic font-medium">Volume crítico de solicitações</p>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 border-l-8 border-red-500 flex flex-col justify-between">
+                    <div>
+                        <p className="text-xs text-gray-400 uppercase font-bold mb-1 tracking-widest">Nível de Urgência</p>
+                        <p className="text-2xl font-black text-navy-dark uppercase">
+                            {topPrioridade}
+                        </p>
+                    </div>
+                    <p className="text-[10px] mt-4 text-gray-400 italic font-medium">Prioridade mais atribuída</p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function TelaCadastros({ setores, prioridades, onUpdate }) {
     const [novoSetor, setNovoSetor] = useState('');
     const [novaPrioridade, setNovaPrioridade] = useState({ nome: '', tempoEstimadoHoras: 24 });
@@ -332,7 +475,7 @@ function TelaCadastros({ setores, prioridades, onUpdate }) {
         try {
             await axios.delete(`${API_URL}/Setores/${id}`);
             onUpdate();
-        } catch { alert("Erro ao excluir. O setor pode estar em uso."); }
+        } catch { alert("Erro ao excluir."); }
     };
 
     const handlePrioridadeSubmit = async (e) => {
@@ -358,9 +501,7 @@ function TelaCadastros({ setores, prioridades, onUpdate }) {
                 <h1 className="text-3xl font-bold text-navy-dark">Configurações <span className="text-navy-light font-light">Gerais</span></h1>
                 <p className="text-gray-500">Gerencie a estrutura organizacional e os prazos de SLA</p>
             </header>
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* SETORES */}
                 <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-3 bg-blue-50 rounded-lg text-blue-600"><Building2 size={24} /></div>
@@ -370,33 +511,31 @@ function TelaCadastros({ setores, prioridades, onUpdate }) {
                         <input type="text" required placeholder="Novo setor..." className="flex-1 border rounded-xl p-3 outline-none focus:ring-2 focus:ring-lemon bg-gray-50 text-sm" value={novoSetor} onChange={e => setNovoSetor(e.target.value)} />
                         <button type="submit" className="bg-navy-dark text-white px-4 rounded-xl hover:bg-navy-light transition shadow-md"><Plus size={24} /></button>
                     </form>
-                    <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
                         {setores.map(s => (
-                            <div key={s.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex justify-between items-center">
+                            <div key={s.id} className="p-4 bg-gray-50 rounded-xl flex justify-between items-center">
                                 <span className="font-semibold text-gray-700">{s.nome}</span>
                                 <button onClick={() => deletarSetor(s.id)} className="p-2 text-gray-400 hover:text-red-500 transition"><Trash2 size={18} /></button>
                             </div>
                         ))}
                     </div>
                 </div>
-
-                {/* PRIORIDADES */}
                 <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-3 bg-red-50 rounded-lg text-red-600"><ShieldAlert size={24} /></div>
                         <h2 className="text-xl font-bold text-navy-dark">Prioridades (SLA)</h2>
                     </div>
                     <form onSubmit={handlePrioridadeSubmit} className="space-y-4 mb-8">
-                        <input type="text" required placeholder="Nome..." className="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-lemon bg-gray-50 text-sm" value={novaPrioridade.nome} onChange={e => setNovaPrioridade({...novaPrioridade, nome: e.target.value})} />
+                        <input type="text" required placeholder="Nome..." className="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-lemon bg-gray-50 text-sm" value={novaPrioridade.nome} onChange={e => setNovaPrioridade({ ...novaPrioridade, nome: e.target.value })} />
                         <div className="flex gap-2">
-                            <input type="number" required placeholder="Horas" className="flex-1 border rounded-xl p-3 outline-none focus:ring-2 focus:ring-lemon bg-gray-50 text-sm" value={novaPrioridade.tempoEstimadoHoras} onChange={e => setNovaPrioridade({...novaPrioridade, tempoEstimadoHoras: Number(e.target.value)})} />
+                            <input type="number" required placeholder="Horas" className="flex-1 border rounded-xl p-3 outline-none focus:ring-2 focus:ring-lemon bg-gray-50 text-sm" value={novaPrioridade.tempoEstimadoHoras} onChange={e => setNovaPrioridade({ ...novaPrioridade, tempoEstimadoHoras: Number(e.target.value) })} />
                             <button type="submit" className="bg-navy-dark text-white px-6 rounded-xl font-bold shadow-md hover:bg-navy-light transition">SALVAR</button>
                         </div>
                     </form>
-                    <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
                         {prioridades.map(p => (
-                            <div key={p.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex justify-between items-center">
-                                <div><p className="font-bold text-navy-dark">{p.nome}</p><p className="text-[10px] text-gray-400 uppercase tracking-widest">{p.tempoEstimadoHoras} Horas</p></div>
+                            <div key={p.id} className="p-4 bg-gray-50 rounded-xl flex justify-between items-center">
+                                <div><p className="font-bold text-navy-dark">{p.nome}</p><p className="text-[10px] text-gray-400 uppercase">{p.tempoEstimadoHoras} Horas</p></div>
                                 <button onClick={() => deletarPrioridade(p.id)} className="p-2 text-gray-400 hover:text-red-500 transition"><Trash2 size={18} /></button>
                             </div>
                         ))}
@@ -419,21 +558,9 @@ function Card({ title, value, icon, isCritical }) {
 }
 
 function StatusBadge({ status }) {
-    const styles = {
-        0: "bg-blue-100 text-blue-700",
-        1: "bg-amber-100 text-amber-700",
-        2: "bg-green-100 text-green-700",
-        3: "bg-gray-100 text-gray-700"
-    };
-    const labels = {
-        0: "Aberto",
-        1: "Em Progresso",
-        2: "Concluído",
-        3: "Cancelado"
-    };
-    return <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${styles[status]}`}>
-        {labels[status] || "S/N"}
-    </span>;
+    const styles = { 0: "bg-blue-100 text-blue-700", 1: "bg-amber-100 text-amber-700", 2: "bg-green-100 text-green-700", 3: "bg-gray-100 text-gray-700" };
+    const labels = { 0: "Aberto", 1: "Em Progresso", 2: "Concluído", 3: "Cancelado" };
+    return <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${styles[status]}`}>{labels[status] || "S/N"}</span>;
 }
 
 export default App;
