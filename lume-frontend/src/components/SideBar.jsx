@@ -41,8 +41,7 @@ export default function Sidebar({ abaAtiva, setAbaAtiva }) {
                 </button>
             </div>
 
-            {/* Espaço para um avatar ou botão de logout no futuro */}
-            <div className="w-8 h-8 rounded-full bg-navy-light border border-white/10" />
+            {/*<div className="w-8 h-8 rounded-full bg-navy-light border border-white/10" />*/}
         </nav>
     );
 }

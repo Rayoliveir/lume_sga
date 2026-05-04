@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
-import axios from 'axios
+import axios from 'axios';
 import TelaCadastros from './pages/TelaCadastros';
 import Toast from './components/Toast';
 import ModalConfirmacao from './components/ModalConfirmacao';
@@ -9,8 +9,6 @@ import ModalChamado from './components/ModalChamado';
 import TelaRelatorios from './pages/TelaRelatorios';
 import TelaGestao from './pages/TelaGestao';
 import Sidebar from './components/SideBar';
-
-
 
 const API_URL = "http://localhost:5251/api";
 
