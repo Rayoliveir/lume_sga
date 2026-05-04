@@ -1,40 +1,22 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import {
-    LayoutDashboard,
-    Clock,
-    AlertTriangle,
-    Plus,
-    Search,
-    LogOut,
-    Settings,
-    Building2,
-    ShieldAlert,
-    Trash2,
-    Edit,
-    BarChart3,
-    PieChart as PieIcon
-} from 'lucide-react';
-import {
-    PieChart,
-    Pie,
-    Cell,
-    Tooltip as RechartsTooltip,
-    ResponsiveContainer,
-    Legend,
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip
-} from 'recharts';
+import { LayoutDashboard, Clock, AlertTriangle, Plus, Search, Settings, Building2, ShieldAlert, Trash2, Edit, BarChart3, CheckCircle, PieChart as PieIcon } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import TelaCadastros from './pages/TelaCadastros';
+import Toast from './components/Toast';
+import ModalConfirmacao from './components/ModalConfirmacao';
+import ModalFinalizar from './components/ModalFinalizar';
+import ModalChamado from './components/ModalChamado';
+import TelaRelatorios from './pages/TelaRelatorios';
+import TelaGestao from './pages/TelaGestao';
+//import Card from './components/Card';
+//import StatusBadge from './components/StatusBadge';
+import Sidebar from './components/SideBar';
 
 const API_URL = "http://localhost:5251/api";
 
 function App() {
-    // --- ESTADOS ---
     const [chamados, setChamados] = useState([]);
     const [setores, setSetores] = useState([]);
     const [prioridades, setPrioridades] = useState([]);
@@ -44,6 +26,14 @@ function App() {
     const [busca, setBusca] = useState('');
     const [abaAtiva, setAbaAtiva] = useState('DASHBOARD');
     const [editandoId, setEditandoId] = useState(null);
+    const [toast, setToast] = useState({ show: false, mensagem: '', tipo: 'sucesso' });
+    const [modalFinalizar, setModalFinalizar] = useState({ show: false, chamadoId: null, solucao: '' });
+    const [modalConfirm, setModalConfirm] = useState({
+        show: false,
+        titulo: '',
+        mensagem: '',
+        onConfirm: null
+    });
 
     const [novoChamado, setNovoChamado] = useState({
         titulo: '',
@@ -52,8 +42,6 @@ function App() {
         prioridadeId: '',
         status: 0
     });
-
-    // --- BUSCA DE DADOS (API) ---
     const fetchSetores = async () => {
         try {
             const response = await axios.get(`${API_URL}/Setores`);
@@ -82,8 +70,6 @@ function App() {
         fetchSetores();
         fetchPrioridades();
     }, []);
-
-    // --- FUNÇÕES DE LÓGICA ---
     const fecharModal = () => {
         setIsModalOpen(false);
         setEditandoId(null);
@@ -102,16 +88,36 @@ function App() {
         setIsModalOpen(true);
     };
 
-    const deletarChamado = async (id) => {
-        if (!window.confirm(`Tem certeza que deseja mover o chamado #${id} para a lixeira?`)) return;
-        try {
-            await axios.delete(`${API_URL}/Chamados/${id}`);
-            fecharModal();
-            fetchChamados();
-        } catch (error) {
-            console.error("Erro ao deletar:", error);
-            alert("Não foi possível excluir o chamado.");
-        }
+    const mostrarMensagem = (msg, tipo = 'sucesso') => {
+        setToast({ show: true, mensagem: msg, tipo: tipo });
+        setTimeout(() => setToast({ show: false, mensagem: '', tipo: 'sucesso' }), 3000);
+    };
+
+    const confirmarExclusao = (titulo, mensagem, acao) => {
+        setModalConfirm({
+            show: true,
+            titulo: titulo,
+            mensagem: mensagem,
+            onConfirm: async () => {
+                await acao();
+                setModalConfirm({ show: false, titulo: '', mensagem: '', onConfirm: null });
+            }
+        });
+    };
+
+    const deletarChamado = (id) => {
+        confirmarExclusao(
+            "Excluir Chamado?",
+            `Tem certeza que deseja remover o chamado #${id}? Esta ação não pode ser desfeita.`,
+            async () => {
+                try {
+                    await axios.delete(`${API_URL}/Chamados/${id}`);
+                    fecharModal();
+                    fetchChamados();
+                    mostrarMensagem("Chamado removido!", "erro");
+                } catch (error) { console.error("Erro ao deletar chamado", error); }
+            }
+        );
     };
 
     const handleSubmitChamado = async (e) => {
@@ -125,14 +131,35 @@ function App() {
 
             if (editandoId) {
                 await axios.put(`${API_URL}/Chamados/${editandoId}`, { ...payload, id: editandoId });
+                mostrarMensagem("Chamado atualizado!", "sucesso");
             } else {
                 await axios.post(`${API_URL}/Chamados`, payload);
+                mostrarMensagem("Chamado criado com sucesso!", "sucesso");
             }
 
             fecharModal();
             fetchChamados();
         } catch (error) {
-            alert("Erro ao salvar chamado.");
+            console.error("Erro ao salvar chamado", error);
+            alert("Erro ao salvar chamado. Verifique a conexão com a API.");
+        }
+    };
+
+    const iniciarFinalizacao = (id) => {
+        setModalFinalizar({ show: true, chamadoId: id, solucao: '' });
+    };
+
+    const confirmarFinalizacao = async () => {
+        if (!modalFinalizar.solucao) return;
+        try {
+            await axios.post(`${API_URL}/Chamados/${modalFinalizar.chamadoId}/check-out`, {
+                solucao: modalFinalizar.solucao
+            });
+            setModalFinalizar({ show: false, chamadoId: null, solucao: '' });
+            mostrarMensagem("Atendimento finalizado!", "sucesso");
+            fetchChamados();
+        } catch (error) {
+            console.error("Erro no Check-out", error);
         }
     };
 
@@ -140,16 +167,8 @@ function App() {
         try {
             await axios.post(`${API_URL}/Chamados/${id}/check-in`);
             fetchChamados();
-        } catch (error) { alert("Erro no Check-in."); }
-    };
-
-    const realizarCheckOut = async (id) => {
-        const solucao = prompt("Descreva a solução:");
-        if (!solucao) return;
-        try {
-            await axios.post(`${API_URL}/Chamados/${id}/check-out`, { solucao });
-            fetchChamados();
-        } catch (error) { alert("Erro no Check-out."); }
+            mostrarMensagem("Check-in realizado!", "sucesso");
+        } catch (error) { console.error("Erro no Check-in", error); }
     };
 
     const prepararDadosRelatorio = () => {
@@ -199,368 +218,78 @@ function App() {
     return (
         <div className="min-h-screen bg-alice flex">
             {/* NAVBAR LATERAL */}
-            <nav className="fixed top-0 left-0 h-full w-20 bg-navy-dark flex flex-col items-center py-8 gap-8 text-white shadow-2xl z-30">
-                <div className="text-lemon font-black text-2xl">L</div>
-                <div className="flex flex-col gap-6 flex-1">
-                    <button onClick={() => setAbaAtiva('DASHBOARD')} className={`p-3 rounded-xl transition ${abaAtiva === 'DASHBOARD' ? 'bg-navy-light text-lemon shadow-lg' : 'hover:text-lemon'}`}>
-                        <LayoutDashboard size={24} />
-                    </button>
-                    <button onClick={() => setAbaAtiva('RELATORIOS')} className={`p-3 rounded-xl transition ${abaAtiva === 'RELATORIOS' ? 'bg-navy-light text-lemon shadow-lg' : 'hover:text-lemon'}`}>
-                        <BarChart3 size={24} />
-                    </button>
-                    <button onClick={() => setAbaAtiva('CADASTROS')} className={`p-3 rounded-xl transition ${abaAtiva === 'CADASTROS' ? 'bg-navy-light text-lemon shadow-lg' : 'hover:text-lemon'}`}>
-                        <Settings size={24} />
-                    </button>
-                </div>
-                <button className="p-3 hover:text-red-400 transition"><LogOut size={24} /></button>
-            </nav>
+            <Sidebar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
 
             {/* CONTEÚDO PRINCIPAL */}
             <main className="ml-20 p-8 w-full">
                 {abaAtiva === 'DASHBOARD' && (
-                    <div className="animate-in fade-in duration-500">
-                        <header className="mb-10">
-                            <h1 className="text-3xl font-bold text-navy-dark italic">LUME <span className="text-navy-light font-light">SGA</span></h1>
-                            <p className="text-gray-500">Gestão de Atendimentos</p>
-                        </header>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                            <Card title="Total" value={chamados.length} icon={<LayoutDashboard />} />
-                            <Card title="Em Aberto" value={chamados.filter(c => c.status === 0).length} icon={<Clock className="text-blue-500" />} />
-                            <Card title="Atrasados" value={chamados.filter(c => c.estaAtrasado).length} icon={<AlertTriangle className="text-red-500" />} isCritical={chamados.filter(c => c.estaAtrasado).length > 0} />
-                        </div>
-
-                        <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-                            <div className="flex gap-2 bg-white p-2 rounded-lg shadow-sm border border-gray-100">
-                                {['TODOS', 'ABERTO', 'INICIADO', 'FINALIZADO', 'DELETADO'].map(s => (
-                                    <button key={s} onClick={() => setFiltroStatus(s)} className={`px-4 py-2 rounded-md text-xs font-bold transition ${filtroStatus === s ? 'bg-navy-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
-                                        {s === 'INICIADO' ? 'EM PROGRESSO' : s}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="flex gap-4">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
-                                    <input type="text" placeholder="Buscar..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-10 pr-4 py-2 rounded-lg bg-white shadow-sm outline-none w-64 border-none" />
-                                </div>
-                                <button onClick={() => setIsModalOpen(true)} className="bg-lemon text-navy-dark px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:scale-105 transition-all shadow-md">
-                                    <Plus size={20} /> NOVO CHAMADO
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-                            <table className="w-full text-left">
-                                <thead className="bg-navy-light text-white font-semibold">
-                                    <tr>
-                                        <th className="p-5">CÓD</th><th className="p-5">TÍTULO</th><th className="p-5">SETOR</th><th className="p-5">SLA</th><th className="p-5">STATUS</th><th className="p-5 text-center">AÇÕES</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {chamadosFiltrados.map(c => (
-                                        <tr key={c.id} className={`border-b border-gray-50 hover:bg-gray-50 transition-colors ${c.estaAtrasado ? 'bg-red-50/30' : ''}`}>
-                                            <td className="p-5 font-mono text-sm text-gray-400">#{c.id}</td>
-                                            <td className="p-5">
-                                                <p className="font-bold text-navy-dark">{c.titulo}</p>
-                                                <p className="text-xs text-gray-400">{new Date(c.dataAbertura).toLocaleString()}</p>
-                                            </td>
-                                            <td className="p-5 text-gray-600">{c.setorNome}</td>
-                                            <td className="p-5 text-sm">{formatarTempo(c.horasDecorridas)}</td>
-                                            <td className="p-5"><StatusBadge status={c.status} /></td>
-                                            <td className="p-5">
-                                                <div className="flex justify-center gap-2">
-                                                    <button
-                                                        onClick={() => abrirEdicao(c)}
-                                                        disabled={c.status >= 2}
-                                                        className={`p-2 rounded-lg transition ${c.status >= 2 ? 'text-gray-300 cursor-not-allowed' : 'text-blue-500 hover:bg-blue-50'}`}
-                                                    >
-                                                        <Edit size={18} />
-                                                    </button>
-                                                    {c.status === 0 && <button onClick={() => realizarCheckIn(c.id)} className="text-xs font-bold text-blue-600 hover:underline">CHECK-IN</button>}
-                                                    {c.status === 1 && <button onClick={() => realizarCheckOut(c.id)} className="text-xs font-bold text-green-600 hover:underline">FINALIZAR</button>}
-                                                    {c.status >= 2 && <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest self-center">Arquivado</span>}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    <TelaGestao
+                        chamados={chamados}
+                        filtroStatus={filtroStatus}
+                        setFiltroStatus={setFiltroStatus}
+                        busca={busca}
+                        setBusca={setBusca}
+                        setIsModalOpen={setIsModalOpen}
+                        chamadosFiltrados={chamadosFiltrados}
+                        formatarTempo={formatarTempo}
+                        abrirEdicao={abrirEdicao}
+                        realizarCheckIn={realizarCheckIn}
+                        iniciarFinalizacao={iniciarFinalizacao}
+                    />
                 )}
 
                 {abaAtiva === 'RELATORIOS' && (
-                    <TelaRelatorios chamados={chamados} prepararDados={prepararDadosRelatorio} />
+                    <TelaRelatorios chamados={chamados} setores={setores} />
                 )}
 
                 {abaAtiva === 'CADASTROS' && (
-                    <TelaCadastros setores={setores} prioridades={prioridades} onUpdate={() => { fetchSetores(); fetchPrioridades(); }} />
+                    <TelaCadastros
+                        setores={setores}
+                        prioridades={prioridades}
+                        onUpdate={() => { fetchSetores(); fetchPrioridades(); }}
+                        onSuccess={(msg) => mostrarMensagem(msg, 'sucesso')}
+                        onDelete={(msg) => mostrarMensagem(msg, 'erro')}
+                        confirmarAcao={confirmarExclusao}
+                    />
                 )}
             </main>
 
             {/* MODAL */}
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-navy-dark/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in duration-300">
-                        <div className={`p-6 text-white flex justify-between items-center ${editandoId ? 'bg-blue-600' : 'bg-navy-dark'}`}>
-                            <h2 className="text-xl font-bold">{editandoId ? `Editar Chamado #${editandoId}` : 'Novo Atendimento'}</h2>
-                            <button onClick={fecharModal}>✕</button>
-                        </div>
-                        <form onSubmit={handleSubmitChamado} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-bold text-navy-dark mb-1">Título</label>
-                                <input type="text" required value={novoChamado.titulo} onChange={e => setNovoChamado({ ...novoChamado, titulo: e.target.value })} className="w-full border rounded-lg p-2 outline-none focus:ring-2 focus:ring-lemon" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-navy-dark mb-1">Setor</label>
-                                <select required value={novoChamado.setorId} onChange={e => setNovoChamado({ ...novoChamado, setorId: e.target.value })} className="w-full border rounded-lg p-2 outline-none">
-                                    <option value="">Selecione...</option>
-                                    {setores.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-navy-dark mb-1">Prioridade</label>
-                                <select required value={novoChamado.prioridadeId} onChange={e => setNovoChamado({ ...novoChamado, prioridadeId: e.target.value })} className="w-full border rounded-lg p-2 outline-none">
-                                    <option value="">Selecione...</option>
-                                    {prioridades.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                                </select>
-                            </div>
-                            <div className="flex flex-col gap-2 pt-4">
-                                <div className="flex gap-2">
-                                    <button type="button" onClick={fecharModal} className="flex-1 px-4 py-2 border rounded-lg font-bold text-gray-500 hover:bg-gray-50 transition">CANCELAR</button>
-                                    <button type="submit" className={`flex-1 px-4 py-2 rounded-lg font-bold text-white transition shadow-md ${editandoId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-lemon text-navy-dark hover:brightness-90'}`}>
-                                        {editandoId ? 'SALVAR' : 'CRIAR'}
-                                    </button>
-                                </div>
-                                {editandoId && (
-                                    <button type="button" onClick={() => deletarChamado(editandoId)} className="w-full mt-2 py-2 text-red-500 text-xs font-bold flex items-center justify-center gap-2 hover:bg-red-50 rounded-lg transition">
-                                        <Trash2 size={14} /> EXCLUIR CHAMADO
-                                    </button>
-                                )}
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <ModalFinalizar
+                show={modalFinalizar.show}
+                solucao={modalFinalizar.solucao}
+                setSolucao={(val) => setModalFinalizar({ ...modalFinalizar, solucao: val })}
+                onCancel={() => setModalFinalizar({ show: false, chamadoId: null, solucao: '' })}
+                onConfirm={confirmarFinalizacao}
+            />
+
+            <ModalChamado
+                isOpen={isModalOpen}
+                fecharModal={fecharModal}
+                editandoId={editandoId}
+                handleSubmit={handleSubmitChamado}
+                novoChamado={novoChamado}
+                setNovoChamado={setNovoChamado}
+                setores={setores}
+                prioridades={prioridades}
+                deletarChamado={deletarChamado}
+            />
+
+            <ModalConfirmacao
+                show={modalConfirm.show}
+                titulo={modalConfirm.titulo}
+                mensagem={modalConfirm.mensagem}
+                onConfirm={modalConfirm.onConfirm}
+                onCancel={() => setModalConfirm({ ...modalConfirm, show: false })}
+            />
+
+            <Toast
+                show={toast.show}
+                mensagem={toast.mensagem}
+                tipo={toast.tipo}
+            />
         </div>
     );
-}
-
-
-function TelaRelatorios({ chamados, prepararDados }) {
-    const { statusData, barData } = prepararDados();
-
-    
-    const contagemSetores = chamados.reduce((acc, c) => {
-        const nome = c.setorNome || "N/A";
-        acc[nome] = (acc[nome] || 0) + 1;
-        return acc;
-    }, {});
-    const topSetor = Object.entries(contagemSetores).sort((a, b) => b[1] - a[1])[0]?.[0] || "---";
-
-    const contagemPrioridades = chamados.reduce((acc, c) => {
-        const nome = c.prioridadeNome || "N/A";
-        acc[nome] = (acc[nome] || 0) + 1;
-        return acc;
-    }, {});
-    const topPrioridade = Object.entries(contagemPrioridades).sort((a, b) => b[1] - a[1])[0]?.[0] || "---";
-
-    return (
-        <div className="flex flex-col gap-8 animate-in fade-in duration-500 pb-10">
-            <header>
-                <h1 className="text-3xl font-bold text-navy-dark">Relatórios do <span className="text-navy-light font-light">Sistema</span></h1>
-                <p className="text-gray-500">Análise de desempenho e demanda por setor</p>
-            </header>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 flex flex-col min-h-[450px]">
-                    <h2 className="text-lg font-bold text-navy-dark mb-4 flex items-center gap-2">
-                        <PieIcon size={20} className="text-blue-500" /> Distribuição por Status
-                    </h2>
-                    <div className="flex-1 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={statusData}
-                                    innerRadius={70}
-                                    outerRadius={110}
-                                    paddingAngle={8}
-                                    dataKey="value"
-                                >
-                                    {statusData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />)}
-                                </Pie>
-                                <RechartsTooltip
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                                />
-                                <Legend verticalAlign="bottom" height={36} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 flex flex-col min-h-[450px]">
-                    <h2 className="text-lg font-bold text-navy-dark mb-4 flex items-center gap-2">
-                        <BarChart3 size={20} className="text-blue-500" /> Setores vs Prioridade
-                    </h2>
-                    <div className="flex-1 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis dataKey="nome" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                                <Tooltip
-                                    cursor={{ fill: '#f8fafc' }}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                                />
-                                <Legend />
-                                <Bar dataKey="Alta" stackId="a" fill="#ef4444" radius={[0, 0, 0, 0]} />
-                                <Bar dataKey="Media" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} />
-                                <Bar dataKey="Baixa" stackId="a" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-navy-dark text-white p-6 rounded-2xl shadow-lg border-l-8 border-lemon flex flex-col justify-between">
-                    <div>
-                        <p className="text-xs opacity-70 uppercase font-bold mb-1 tracking-widest">Taxa de Eficiência</p>
-                        <p className="text-4xl font-black text-lemon">
-                            {chamados.length > 0 ? ((chamados.filter(c => c.status === 2).length / chamados.length) * 100).toFixed(1) : 0}%
-                        </p>
-                    </div>
-                    <p className="text-[10px] mt-4 opacity-50 italic">Cálculo baseado em conclusões reais</p>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 border-l-8 border-blue-500 flex flex-col justify-between">
-                    <div>
-                        <p className="text-xs text-gray-400 uppercase font-bold mb-1 tracking-widest">Setor em Destaque</p>
-                        <p className="text-2xl font-black text-navy-dark truncate leading-tight">
-                            {topSetor}
-                        </p>
-                    </div>
-                    <p className="text-[10px] mt-4 text-gray-400 italic font-medium">Volume crítico de solicitações</p>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 border-l-8 border-red-500 flex flex-col justify-between">
-                    <div>
-                        <p className="text-xs text-gray-400 uppercase font-bold mb-1 tracking-widest">Nível de Urgência</p>
-                        <p className="text-2xl font-black text-navy-dark uppercase">
-                            {topPrioridade}
-                        </p>
-                    </div>
-                    <p className="text-[10px] mt-4 text-gray-400 italic font-medium">Prioridade mais atribuída</p>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function TelaCadastros({ setores, prioridades, onUpdate }) {
-    const [novoSetor, setNovoSetor] = useState('');
-    const [novaPrioridade, setNovaPrioridade] = useState({ nome: '', tempoEstimadoHoras: 24 });
-
-    const handleSetorSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            await axios.post(`${API_URL}/Setores`, { nome: novoSetor });
-            setNovoSetor('');
-            onUpdate();
-        } catch { alert("Erro ao adicionar setor."); }
-    };
-
-    const deletarSetor = async (id) => {
-        if (!window.confirm("Excluir setor?")) return;
-        try {
-            await axios.delete(`${API_URL}/Setores/${id}`);
-            onUpdate();
-        } catch { alert("Erro ao excluir."); }
-    };
-
-    const handlePrioridadeSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            await axios.post(`${API_URL}/Prioridades`, novaPrioridade);
-            setNovaPrioridade({ nome: '', tempoEstimadoHoras: 24 });
-            onUpdate();
-        } catch { alert("Erro ao adicionar prioridade."); }
-    };
-
-    const deletarPrioridade = async (id) => {
-        if (!window.confirm("Excluir prioridade?")) return;
-        try {
-            await axios.delete(`${API_URL}/Prioridades/${id}`);
-            onUpdate();
-        } catch { alert("Erro ao excluir."); }
-    };
-
-    return (
-        <div className="max-w-5xl animate-in slide-in-from-right-10 duration-500">
-            <header className="mb-10">
-                <h1 className="text-3xl font-bold text-navy-dark">Configurações <span className="text-navy-light font-light">Gerais</span></h1>
-                <p className="text-gray-500">Gerencie a estrutura organizacional e os prazos de SLA</p>
-            </header>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-3 bg-blue-50 rounded-lg text-blue-600"><Building2 size={24} /></div>
-                        <h2 className="text-xl font-bold text-navy-dark">Setores</h2>
-                    </div>
-                    <form onSubmit={handleSetorSubmit} className="flex gap-2 mb-8">
-                        <input type="text" required placeholder="Novo setor..." className="flex-1 border rounded-xl p-3 outline-none focus:ring-2 focus:ring-lemon bg-gray-50 text-sm" value={novoSetor} onChange={e => setNovoSetor(e.target.value)} />
-                        <button type="submit" className="bg-navy-dark text-white px-4 rounded-xl hover:bg-navy-light transition shadow-md"><Plus size={24} /></button>
-                    </form>
-                    <div className="space-y-2 max-h-80 overflow-y-auto">
-                        {setores.map(s => (
-                            <div key={s.id} className="p-4 bg-gray-50 rounded-xl flex justify-between items-center">
-                                <span className="font-semibold text-gray-700">{s.nome}</span>
-                                <button onClick={() => deletarSetor(s.id)} className="p-2 text-gray-400 hover:text-red-500 transition"><Trash2 size={18} /></button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-3 bg-red-50 rounded-lg text-red-600"><ShieldAlert size={24} /></div>
-                        <h2 className="text-xl font-bold text-navy-dark">Prioridades (SLA)</h2>
-                    </div>
-                    <form onSubmit={handlePrioridadeSubmit} className="space-y-4 mb-8">
-                        <input type="text" required placeholder="Nome..." className="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-lemon bg-gray-50 text-sm" value={novaPrioridade.nome} onChange={e => setNovaPrioridade({ ...novaPrioridade, nome: e.target.value })} />
-                        <div className="flex gap-2">
-                            <input type="number" required placeholder="Horas" className="flex-1 border rounded-xl p-3 outline-none focus:ring-2 focus:ring-lemon bg-gray-50 text-sm" value={novaPrioridade.tempoEstimadoHoras} onChange={e => setNovaPrioridade({ ...novaPrioridade, tempoEstimadoHoras: Number(e.target.value) })} />
-                            <button type="submit" className="bg-navy-dark text-white px-6 rounded-xl font-bold shadow-md hover:bg-navy-light transition">SALVAR</button>
-                        </div>
-                    </form>
-                    <div className="space-y-2 max-h-80 overflow-y-auto">
-                        {prioridades.map(p => (
-                            <div key={p.id} className="p-4 bg-gray-50 rounded-xl flex justify-between items-center">
-                                <div><p className="font-bold text-navy-dark">{p.nome}</p><p className="text-[10px] text-gray-400 uppercase">{p.tempoEstimadoHoras} Horas</p></div>
-                                <button onClick={() => deletarPrioridade(p.id)} className="p-2 text-gray-400 hover:text-red-500 transition"><Trash2 size={18} /></button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function Card({ title, value, icon, isCritical }) {
-    return (
-        <div className={`bg-white p-6 rounded-2xl shadow-sm border-b-4 transition-all hover:translate-y-[-4px] ${isCritical ? 'border-red-500 shadow-red-100' : 'border-lemon shadow-gray-100'}`}>
-            <div className="flex justify-between items-start">
-                <div><p className="text-gray-400 text-sm font-medium uppercase tracking-wider">{title}</p><p className="text-3xl font-black text-navy-dark mt-1">{value}</p></div>
-                <div className="p-3 bg-gray-50 rounded-xl">{icon}</div>
-            </div>
-        </div>
-    );
-}
-
-function StatusBadge({ status }) {
-    const styles = { 0: "bg-blue-100 text-blue-700", 1: "bg-amber-100 text-amber-700", 2: "bg-green-100 text-green-700", 3: "bg-gray-100 text-gray-700" };
-    const labels = { 0: "Aberto", 1: "Em Progresso", 2: "Concluído", 3: "Cancelado" };
-    return <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${styles[status]}`}>{labels[status] || "S/N"}</span>;
 }
 
 export default App;
