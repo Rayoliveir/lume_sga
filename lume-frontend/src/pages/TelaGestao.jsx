@@ -20,7 +20,7 @@ export default function TelaGestao({
     abrirEdicao,
     realizarCheckIn,
     iniciarFinalizacao
-}) {
+}) { 
     return (
         <div className="animate-in fade-in duration-500">
             <header className="mb-10">
@@ -125,11 +125,8 @@ export default function TelaGestao({
                                     <StatusBadge status={c.status} />
                                 </td>
 
-                                {/* COLUNA SLA RESTAURADA AQUI */}
-                                {/* COLUNA SLA COM MEMÓRIA DE ATRASO */}
                                 <td className="p-5">
                                     {c.status >= 2 ? (
-                                        // Se o chamado está FINALIZADO ou DELETADO
                                         c.estaAtrasado ? (
                                             <span className="flex items-center gap-1 text-red-700 font-bold text-[10px] bg-red-200 px-2 py-1 rounded-full w-fit border border-red-300">
                                                 <AlertTriangle size={12} /> ATENDIDO FORA DO PRAZO
@@ -140,7 +137,6 @@ export default function TelaGestao({
                                             </span>
                                         )
                                     ) : (
-                                        // Se o chamado ainda está ABERTO ou EM PROGRESSO
                                         c.estaAtrasado ? (
                                             <span className="flex items-center gap-1 text-red-600 font-bold text-[10px] bg-red-100 px-2 py-1 rounded-full w-fit animate-pulse">
                                                 <AlertTriangle size={12} /> FORA DO PRAZO

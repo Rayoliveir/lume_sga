@@ -10,7 +10,7 @@ import {
     PieChart,
     Pie,
     Cell,
-    Tooltip as RechartsTooltip,
+    //Tooltip as RechartsTooltip,
     ResponsiveContainer,
     Legend,
     BarChart,

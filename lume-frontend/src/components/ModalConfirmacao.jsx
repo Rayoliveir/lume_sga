@@ -4,6 +4,7 @@ import { Trash2 } from 'lucide-react';
 export default function ModalConfirmacao({ show, titulo, mensagem, onConfirm, onCancel }) {
     if (!show) return null;
 
+
     return (
         <div className="fixed inset-0 bg-navy-dark/90 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
             <div className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">

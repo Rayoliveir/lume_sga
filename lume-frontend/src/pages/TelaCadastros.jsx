@@ -1,15 +1,23 @@
 import { useState } from 'react';
-import axios from '../api/api'; // Importa a nossa config central
+import axios from '../api/api';
 import { Building2, Plus, Trash2, ShieldAlert } from 'lucide-react';
 
-function TelaCadastros({ setores, prioridades, onUpdate, onSuccess, onDelete, confirmarAcao }) {
+function TelaCadastros({ chamados, setores, prioridades, onUpdate, onSuccess, onDelete, confirmarAcao }) {
     const API_URL = "http://localhost:5251/api";
 
     const [novoSetor, setNovoSetor] = useState('');
     const [novaPrioridade, setNovaPrioridade] = useState({ nome: '', tempoEstimadoHoras: 24 });
 
+
     const handleSetorSubmit = async (e) => {
         e.preventDefault();
+
+        const setorExiste = setores.some(s => s.nome.trim().toUpperCase() === novoSetor.trim().toUpperCase());
+        if (setorExiste) {
+            onDelete("Este setor já está cadastrado!");
+            return;
+        }
+
         try {
             await axios.post(`${API_URL}/Setores`, { nome: novoSetor });
             setNovoSetor('');
@@ -20,10 +28,16 @@ function TelaCadastros({ setores, prioridades, onUpdate, onSuccess, onDelete, co
         }
     };
 
-    const deletarSetor = (id) => {
+    const deletarSetor = (id, nome) => { 
+        const emUso = chamados.some(c => Number(c.setorId) === Number(id));
+        if (emUso) {
+            onDelete(`O setor "${nome}" possui chamados vinculados e não pode ser excluído.`);
+            return;
+        }
+
         confirmarAcao(
             "Excluir Setor?",
-            "Tem certeza? Isso pode afetar chamados vinculados a este setor.",
+            `Tem certeza que deseja remover o setor "${nome}"?`,
             async () => {
                 try {
                     await axios.delete(`${API_URL}/Setores/${id}`);
@@ -31,14 +45,26 @@ function TelaCadastros({ setores, prioridades, onUpdate, onSuccess, onDelete, co
                     onDelete("Setor removido!");
                 } catch (error) {
                     console.error(error);
-                    onDelete("Erro: Setor em uso!");
+                    onDelete("Erro ao remover: Verifique a conexão.");
                 }
             }
         );
     };
 
     const handlePrioridadeSubmit = async (e) => {
-        e.preventDefault();
+        e.preventDefault()
+        const nomeExiste = prioridades.some(p => p.nome.trim().toUpperCase() === novaPrioridade.nome.trim().toUpperCase())
+        const horasExiste = prioridades.some(p => Number(p.tempoEstimadoHoras) === Number(novaPrioridade.tempoEstimadoHoras));
+
+        if (nomeExiste) {
+            onDelete("Já existe uma prioridade com este nome!");
+            return;
+        }
+        if (horasExiste) {
+            onDelete(`Já existe uma prioridade com ${novaPrioridade.tempoEstimadoHoras} horas configuradas!`);
+            return;
+        }
+
         try {
             await axios.post(`${API_URL}/Prioridades`, novaPrioridade);
             setNovaPrioridade({ nome: '', tempoEstimadoHoras: 24 });
@@ -49,10 +75,16 @@ function TelaCadastros({ setores, prioridades, onUpdate, onSuccess, onDelete, co
         }
     };
 
-    const deletarPrioridade = (id) => {
+    const deletarPrioridade = (id, nome) => {
+        const emUso = chamados.some(c => Number(c.prioridadeId) === Number(id));
+        if (emUso) {
+            onDelete(`A prioridade "${nome}" está em uso e não pode ser removida.`);
+            return;
+        }
+
         confirmarAcao(
             "Excluir Prioridade?",
-            "Esta ação removerá as regras de SLA desta prioridade.",
+            `Esta ação removerá as regras de SLA da prioridade "${nome}".`,
             async () => {
                 try {
                     await axios.delete(`${API_URL}/Prioridades/${id}`);
@@ -102,7 +134,7 @@ function TelaCadastros({ setores, prioridades, onUpdate, onSuccess, onDelete, co
                             <div key={s.id} className="p-4 bg-gray-50 rounded-xl flex justify-between items-center group hover:bg-gray-100 transition">
                                 <span className="font-semibold text-gray-700">{s.nome}</span>
                                 <button
-                                    onClick={() => deletarSetor(s.id)}
+                                    onClick={() => deletarSetor(s.id, s.nome)}
                                     className="p-2 text-gray-300 hover:text-red-500 transition"
                                 >
                                     <Trash2 size={18} />
@@ -151,7 +183,7 @@ function TelaCadastros({ setores, prioridades, onUpdate, onSuccess, onDelete, co
                                     <p className="text-[10px] text-gray-400 uppercase tracking-tighter">{p.tempoEstimadoHoras} Horas de Prazo</p>
                                 </div>
                                 <button
-                                    onClick={() => deletarPrioridade(p.id)}
+                                    onClick={() => deletarPrioridade(p.id, p.nome)}
                                     className="p-2 text-gray-300 hover:text-red-500 transition"
                                 >
                                     <Trash2 size={18} />
