@@ -28,11 +28,18 @@ function TelaCadastros({ chamados, setores, prioridades, onUpdate, onSuccess, on
         }
     };
 
-    const deletarSetor = (id, nome) => { 
+    const deletarSetor = (id, nome) => {
 
-        console.log("ID do Setor que quer apagar:", id);
-        console.log("Exemplo de SetorId no primeiro chamado:", chamados[0]?.id);
-        const emUso = chamados.some(c => Number(c.id) === Number(id));
+        const emUso = chamados.some(c => c.setorNome === nome);
+
+        if (emUso) {
+            onDelete(`O setor "${nome}" possui chamados vinculados e não pode ser excluído.`);
+            return;
+        }
+
+        if (chamados.length > 0) {
+            console.log("ESTRUTURA DO CHAMADO:", chamados[0]);
+        }
         if (emUso) {
             onDelete(`O setor "${nome}" possui chamados vinculados e não pode ser excluído.`);
             return;
