@@ -105,6 +105,7 @@ export default function TelaGestao({
                             <th className="p-5">CÓD</th>
                             <th className="p-5">TÍTULO</th>
                             <th className="p-5">SETOR</th>
+                            <th className="p-5">PRIORIDADE</th>
                             <th className="p-5">HORAS</th>
                             <th className="p-5">STATUS</th>
                             <th className="p-5">SLA</th>
@@ -120,6 +121,16 @@ export default function TelaGestao({
                                     <p className="text-xs text-gray-400">{new Date(c.dataAbertura).toLocaleString()}</p>
                                 </td>
                                 <td className="p-5 text-gray-600">{c.setorNome}</td>
+                                <td className="p-5">
+                                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold border ${c.prioridadeNome?.toUpperCase() === 'ALTA' || c.prioridadeNome?.toUpperCase() === 'CRÍTICA'
+                                            ? 'bg-red-50 text-red-600 border-red-100'
+                                            : c.prioridadeNome?.toUpperCase() === 'MÉDIA'
+                                                ? 'bg-amber-50 text-amber-600 border-amber-100'
+                                                : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                        }`}>
+                                        {c.prioridadeNome}
+                                    </span>
+                                </td>
                                 <td className="p-5 text-sm">{formatarTempo(c.horasDecorridas)}</td>
                                 <td className="p-5">
                                     <StatusBadge status={c.status} />

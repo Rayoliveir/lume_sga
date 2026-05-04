@@ -6,7 +6,7 @@ function TelaCadastros({ chamados, setores, prioridades, onUpdate, onSuccess, on
     const API_URL = "http://localhost:5251/api";
 
     const [novoSetor, setNovoSetor] = useState('');
-    const [novaPrioridade, setNovaPrioridade] = useState({ nome: '', tempoEstimadoHoras: 24 });
+    const [novaPrioridade, setNovaPrioridade] = useState({ nome: '', tempoEstimadoHoras: 1 });
 
 
     const handleSetorSubmit = async (e) => {
@@ -63,6 +63,11 @@ function TelaCadastros({ chamados, setores, prioridades, onUpdate, onSuccess, on
 
     const handlePrioridadeSubmit = async (e) => {
         e.preventDefault()
+
+        if (novaPrioridade.tempoEstimadoHoras < 1) {
+            onDelete("O prazo de SLA deve ser de no mínimo 1 hora.");
+            return;
+        }
         const nomeExiste = prioridades.some(p => p.nome.trim().toUpperCase() === novaPrioridade.nome.trim().toUpperCase())
         const horasExiste = prioridades.some(p => Number(p.tempoEstimadoHoras) === Number(novaPrioridade.tempoEstimadoHoras));
 
@@ -174,6 +179,7 @@ function TelaCadastros({ chamados, setores, prioridades, onUpdate, onSuccess, on
                             <input
                                 type="number"
                                 required
+                                min={1}
                                 placeholder="Horas"
                                 className="flex-1 border rounded-xl p-3 outline-none focus:ring-2 focus:ring-lemon bg-gray-50 text-sm"
                                 value={novaPrioridade.tempoEstimadoHoras}
