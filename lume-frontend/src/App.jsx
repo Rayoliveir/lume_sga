@@ -9,10 +9,13 @@ import ModalChamado from './components/ModalChamado';
 import TelaRelatorios from './pages/TelaRelatorios';
 import TelaGestao from './pages/TelaGestao';
 import Sidebar from './components/SideBar';
+import TelaLogin from './components/TelaLogin';
 
 const API_URL = "http://localhost:5251/api";
 
 function App() {
+    const [usuario, setUsuario] = useState(null);
+    const [carregandoSessao, setCarregandoSessao] = useState(true);
     const [chamados, setChamados] = useState([]);
     const [setores, setSetores] = useState([]);
     const [prioridades, setPrioridades] = useState([]);
@@ -38,6 +41,15 @@ function App() {
         prioridadeId: '',
         status: 0
     });
+
+    useEffect(() => {
+        const usuarioSalvo = localStorage.getItem('lume_user');
+        if (usuarioSalvo) {
+            setUsuario(JSON.parse(usuarioSalvo));
+        }
+        setCarregandoSessao(false);
+    }, []);
+
     const fetchSetores = async () => {
         try {
             const response = await axios.get(`${API_URL}/Setores`);
@@ -57,6 +69,16 @@ function App() {
             const response = await axios.get(`${API_URL}/Prioridades`);
             setPrioridades(response.data);
         } catch (error) { console.error("Erro prioridades", error); }
+    };
+
+    const realizarLogin = (dadosUsuario) => {
+        setUsuario(dadosUsuario);
+        localStorage.setItem('lume_user', JSON.stringify(dadosUsuario));
+    };
+
+    const realizarLogout = () => {
+        setUsuario(null);
+        localStorage.removeItem('lume_user');
     };
 
     useEffect(() => {
@@ -175,6 +197,12 @@ function App() {
         return statusMatch && c.titulo.toLowerCase().includes(busca.toLowerCase());
     });
 
+    if (carregandoSessao) return null;
+
+    if (!usuario) {
+        return <TelaLogin onLogin={realizarLogin} />;
+    }
+
     return (
         <div className="min-h-screen bg-alice flex">
             {/* NAVBAR LATERAL */}
@@ -182,6 +210,20 @@ function App() {
 
             {/* CONTEÚDO PRINCIPAL */}
             <main className="ml-20 p-8 w-full">
+                {/* Cabeçalho de Identificação do Usuário Logado */}
+                <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
+                    <div>
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Painel Operacional</span>
+                        <h2 className="text-xl font-bold text-navy-dark">Bem-vindo, <span className="text-navy-light">{usuario.nome}</span></h2>
+                    </div>
+                    <button
+                        onClick={realizarLogout}
+                        className="bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs py-2 px-4 rounded-xl border border-red-200 transition-all shadow-sm"
+                    >
+                        Sair do Sistema
+                    </button>
+                </div>
+
                 {abaAtiva === 'DASHBOARD' && (
                     <TelaGestao
                         chamados={chamados}
